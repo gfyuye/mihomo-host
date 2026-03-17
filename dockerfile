@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # 安装必要的工具
-RUN apk add --no-cache curl tar gzip bash jq
+RUN apk add --no-cache curl tar gzip bash jq busybox-extras
 
 # 设置构建参数
 ARG TARGETPLATFORM
@@ -82,12 +82,16 @@ RUN set -e && \
         fi && \
         \
         echo "Download complete, file size: $(wc -c < zashboard.zip) bytes" && \
-        echo "Installing unzip..." && \
         apk add --no-cache unzip && \
-        \
-        # 直接解压（因为是 dist.zip）
         echo "Extracting zip archive..." && \
         unzip -q zashboard.zip -d /app/zashboard/ && \
+        \
+        # 如果解压后有 dist 目录，将其内容移出
+        if [ -d "/app/zashboard/dist" ]; then \
+            echo "Moving dist contents to /app/zashboard..." && \
+            mv /app/zashboard/dist/* /app/zashboard/ 2>/dev/null || true && \
+            rmdir /app/zashboard/dist 2>/dev/null || true; \
+        fi && \
         \
         rm zashboard.zip; \
         echo "Zashboard installed to /app/zashboard"; \
@@ -118,13 +122,20 @@ RUN echo 'port: 7890' > /etc/mihomo/config.yaml && \
     echo '  - GEOIP,CN,DIRECT' >> /etc/mihomo/config.yaml && \
     echo '  - MATCH,PROXY' >> /etc/mihomo/config.yaml
 
-# 创建启动脚本
+# 启动脚本，同时启动 mihomo 和 http server
 RUN echo '#!/bin/sh' > /start.sh && \
     echo '# 后台启动 mihomo' >> /start.sh && \
     echo 'echo "Starting mihomo..."' >> /start.sh && \
     echo '/usr/local/bin/mihomo -d /etc/mihomo 2>&1 | tee /var/log/mihomo.log &' >> /start.sh && \
     echo 'MIHOMO_PID=$!' >> /start.sh && \
     echo 'echo "Mihomo started with PID: $MIHOMO_PID"' >> /start.sh && \
+    echo '' >> /start.sh && \
+    echo '# 启动静态文件服务器（zashboard）' >> /start.sh && \
+    echo 'echo "Starting zashboard web server on port 8080..."' >> /start.sh && \
+    echo 'cd /app/zashboard && busybox httpd -f -p 8080 -h /app/zashboard &' >> /start.sh && \
+    echo 'HTTPD_PID=$!' >> /start.sh && \
+    echo 'echo "Zashboard server started with PID: $HTTPD_PID"' >> /start.sh && \
+    echo '' >> /start.sh && \
     echo '# 保持容器运行并监控日志' >> /start.sh && \
     echo 'tail -f /var/log/mihomo.log' >> /start.sh && \
     chmod +x /start.sh
