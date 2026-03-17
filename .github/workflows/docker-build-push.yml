@@ -33,14 +33,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      # 获取 Mihomo 最新版本信息并保存到文件
-      - name: Fetch Mihomo release data
-        run: |
-          echo "Fetching Mihomo latest release info..."
-          curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest > mihomo-release.json
-          echo "Mihomo release data saved to file"
-
-      # 获取 Zashboard 下载 URL
+      # 获取 Zashboard 下载 URL（Mihomo 现在在 Dockerfile 中直接获取）
       - name: Get Zashboard download URL
         id: zashboard
         run: |
@@ -68,5 +61,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             ZASHBOARD_DOWNLOAD_URL=${{ steps.zashboard.outputs.url }}
-          secrets: |
-            "MIHOMO_RELEASE_DATA=./mihomo-release.json"
