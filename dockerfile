@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # 安装必要的工具
-RUN apk add --no-cache curl tar gzip bash jq
+RUN apk add --no-cache curl tar gzip bash jq busybox-extras
 
 # 设置构建参数
 ARG TARGETPLATFORM
