@@ -11,25 +11,43 @@ ARG ZASHBOARD_DOWNLOAD_URL
 # 创建工作目录
 WORKDIR /app
 
-# 挂载 secret 文件并下载 Mihomo
+# 第一步：单独读取并验证 secret
 RUN --mount=type=secret,id=MIHOMO_RELEASE_DATA \
-    echo "Target platform: ${TARGETPLATFORM}" && \
-    echo "Processing Mihomo release data..." && \
-    \
-    # 从 secret 文件读取数据
-    MIHOMO_RELEASE_DATA=$(cat /run/secrets/MIHOMO_RELEASE_DATA) && \
+    echo "=== Step 1: Reading secret file ===" && \
+    if [ ! -f /run/secrets/MIHOMO_RELEASE_DATA ]; then \
+        echo "ERROR: Secret file not found!" && exit 1; \
+    fi && \
+    echo "Secret file exists, size: $(wc -c < /run/secrets/MIHOMO_RELEASE_DATA) bytes" && \
+    # 保存到临时文件供后续使用
+    cp /run/secrets/MIHOMO_RELEASE_DATA /tmp/mihomo-data.json && \
+    echo "Secret file copied to /tmp/mihomo-data.json"
+
+# 第二步：解析架构并下载
+RUN echo "=== Step 2: Processing platform ${TARGETPLATFORM} ===" && \
+    # 检查文件是否存在
+    if [ ! -f /tmp/mihomo-data.json ]; then \
+        echo "ERROR: Mihomo data file not found!" && exit 1; \
+    fi && \
+    # 读取数据
+    MIHOMO_RELEASE_DATA=$(cat /tmp/mihomo-data.json) && \
+    echo "Data loaded, length: ${#MIHOMO_RELEASE_DATA}" && \
     \
     # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
+        echo "Selecting amd64 v3 binary..." && \
         FILTER='.assets[] | select(.name | contains("linux-amd64-v3") and endswith(".gz")) | .browser_download_url'; \
     elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
+        echo "Selecting arm64 binary..." && \
         FILTER='.assets[] | select(.name | contains("linux-arm64") and endswith(".gz")) | .browser_download_url'; \
     else \
         echo "Unsupported platform: ${TARGETPLATFORM}" && exit 1; \
     fi && \
     \
+    echo "Using filter: ${FILTER}" && \
+    \
     # 使用 jq 从 JSON 中提取 URL
     MIHOMO_URL=$(echo "${MIHOMO_RELEASE_DATA}" | jq -r "${FILTER}" | head -n1) && \
+    echo "Found URL: ${MIHOMO_URL}" && \
     \
     if [ -z "${MIHOMO_URL}" ] || [ "${MIHOMO_URL}" = "null" ]; then \
         echo "Error: Could not find appropriate Mihomo binary for ${TARGETPLATFORM}" && \
@@ -41,29 +59,48 @@ RUN --mount=type=secret,id=MIHOMO_RELEASE_DATA \
     echo "Downloading Mihomo from: ${MIHOMO_URL}" && \
     curl -L -o mihomo.gz "${MIHOMO_URL}" && \
     \
-    # 解压 gz 文件并重命名为 mihomo
+    # 验证下载
+    if [ ! -f mihomo.gz ] || [ ! -s mihomo.gz ]; then \
+        echo "ERROR: Download failed or file is empty" && exit 1; \
+    fi && \
+    echo "Download complete, file size: $(wc -c < mihomo.gz) bytes" && \
+    \
+    # 解压 gz 文件
     gzip -d mihomo.gz && \
+    if [ ! -f mihomo ]; then \
+        echo "ERROR: Decompression failed" && exit 1; \
+    fi && \
     chmod +x mihomo && \
     mv mihomo /usr/local/bin/mihomo && \
-    echo "Mihomo installed successfully"
+    echo "Mihomo installed successfully at /usr/local/bin/mihomo"
 
 # 下载并安装 zashboard
-RUN if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
+RUN echo "=== Step 3: Installing Zashboard ===" && \
+    if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
         echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
         curl -L -o zashboard.archive "${ZASHBOARD_DOWNLOAD_URL}" && \
         \
+        if [ ! -f zashboard.archive ] || [ ! -s zashboard.archive ]; then \
+            echo "ERROR: Zashboard download failed" && exit 1; \
+        fi && \
+        \
+        echo "Download complete, file type: $(file zashboard.archive)" && \
+        \
         # 检查文件类型并解压
         if file zashboard.archive | grep -q "gzip compressed"; then \
+            echo "Extracting gzip archive..." && \
             tar -xzf zashboard.archive -C /app/zashboard/; \
         elif file zashboard.archive | grep -q "Zip archive"; then \
+            echo "Extracting zip archive..." && \
             apk add --no-cache unzip && \
-            unzip zashboard.archive -d /app/zashboard/; \
+            unzip -q zashboard.archive -d /app/zashboard/; \
         else \
             echo "Unknown archive format, copying as is" && \
             cp zashboard.archive /app/zashboard/; \
         fi && \
         rm zashboard.archive; \
+        echo "Zashboard installed to /app/zashboard"; \
     else \
         echo "Zashboard download URL not provided, skipping..."; \
     fi
