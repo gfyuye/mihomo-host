@@ -68,6 +68,5 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
             ZASHBOARD_DOWNLOAD_URL=${{ steps.zashboard.outputs.url }}
-          # 通过文件传递 Mihomo 数据
           secrets: |
             "MIHOMO_RELEASE_DATA=./mihomo-release.json"
