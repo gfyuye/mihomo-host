@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # 安装必要的工具
-RUN apk add --no-cache curl tar gzip bash
+RUN apk add --no-cache curl tar gzip bash jq
 
 # 设置构建参数
 ARG TARGETPLATFORM
@@ -14,18 +14,32 @@ WORKDIR /app
 
 # 根据架构选择正确的 Mihomo 下载 URL
 RUN echo "Target platform: ${TARGETPLATFORM}" && \
+    echo "Processing Mihomo release data..." && \
+    \
+    # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
-        MIHOMO_URL=$(echo "${MIHOMO_RELEASE_DATA}" | grep -o '"browser_download_url": *"[^"]*linux-amd64-v3[^"]*"' | sed 's/"browser_download_url": "//;s/"//g' | head -n1); \
+        # 查找 amd64 v3 版本
+        FILTER='.assets[] | select(.name | contains("linux-amd64-v3") and endswith(".gz")) | .browser_download_url'; \
     elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
-        MIHOMO_URL=$(echo "${MIHOMO_RELEASE_DATA}" | grep -o '"browser_download_url": *"[^"]*linux-arm64[^"]*"' | sed 's/"browser_download_url": "//;s/"//g' | head -n1); \
+        # 查找 arm64 版本
+        FILTER='.assets[] | select(.name | contains("linux-arm64") and endswith(".gz")) | .browser_download_url'; \
     else \
         echo "Unsupported platform: ${TARGETPLATFORM}" && exit 1; \
     fi && \
+    \
+    # 使用 jq 从 JSON 中提取 URL
+    MIHOMO_URL=$(echo "${MIHOMO_RELEASE_DATA}" | jq -r "${FILTER}" | head -n1) && \
+    \
     if [ -z "${MIHOMO_URL}" ] || [ "${MIHOMO_URL}" = "null" ]; then \
-        echo "Error: Could not find appropriate Mihomo binary for ${TARGETPLATFORM}" && exit 1; \
+        echo "Error: Could not find appropriate Mihomo binary for ${TARGETPLATFORM}" && \
+        echo "Available assets:" && \
+        echo "${MIHOMO_RELEASE_DATA}" | jq '.assets[].name' && \
+        exit 1; \
     fi && \
+    \
     echo "Downloading Mihomo from: ${MIHOMO_URL}" && \
     curl -L -o mihomo.gz "${MIHOMO_URL}" && \
+    \
     # 解压 gz 文件并重命名为 mihomo
     gzip -d mihomo.gz && \
     chmod +x mihomo && \
@@ -37,10 +51,12 @@ RUN if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "n
         echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
         curl -L -o zashboard.archive "${ZASHBOARD_DOWNLOAD_URL}" && \
+        \
         # 检查文件类型并解压
         if file zashboard.archive | grep -q "gzip compressed"; then \
             tar -xzf zashboard.archive -C /app/zashboard/; \
         elif file zashboard.archive | grep -q "Zip archive"; then \
+            apk add --no-cache unzip && \
             unzip zashboard.archive -d /app/zashboard/; \
         else \
             echo "Unknown archive format, copying as is" && \
@@ -54,16 +70,41 @@ RUN if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "n
 # 创建必要的目录
 RUN mkdir -p /etc/mihomo /var/log
 
-# 复制配置文件（假设在仓库中有 config.yaml）
-# 如果配置文件不在仓库中，可以通过卷挂载的方式提供
-COPY config.yaml /etc/mihomo/config.yaml
+# 创建默认配置文件（如果不存在）
+RUN if [ ! -f /etc/mihomo/config.yaml ]; then \
+        cat > /etc/mihomo/config.yaml << 'EOF' && \
+# 默认配置文件
+port: 7890
+socks-port: 7891
+allow-lan: true
+mode: rule
+log-level: info
+external-controller: 0.0.0.0:9090
+
+proxies: []
+
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    proxies:
+      - DIRECT
+
+rules:
+  - GEOIP,CN,DIRECT
+  - MATCH,PROXY
+EOF
+        echo "Created default config.yaml"; \
+    fi
 
 # 创建启动脚本
 RUN echo '#!/bin/sh' > /start.sh && \
     echo '# 后台启动 mihomo' >> /start.sh && \
+    echo 'echo "Starting mihomo..."' >> /start.sh && \
     echo '/usr/local/bin/mihomo -d /etc/mihomo 2>&1 | tee /var/log/mihomo.log &' >> /start.sh && \
-    echo '# 保持容器运行' >> /start.sh && \
-    echo 'tail -f /dev/null' >> /start.sh && \
+    echo 'MIHOMO_PID=$!' >> /start.sh && \
+    echo 'echo "Mihomo started with PID: $MIHOMO_PID"' >> /start.sh && \
+    echo '# 保持容器运行并监控日志' >> /start.sh && \
+    echo 'tail -f /var/log/mihomo.log' >> /start.sh && \
     chmod +x /start.sh
 
 # 暴露端口
