@@ -33,30 +33,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      # 获取 Mihomo 最新版本信息（修复输出格式）
-      - name: Get Mihomo latest release info
-        id: mihomo
+      # 获取 Mihomo 最新版本信息并保存到文件
+      - name: Fetch Mihomo release data
         run: |
           echo "Fetching Mihomo latest release info..."
-          # 获取最新 release 的 JSON 数据
-          RELEASE_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest)
-          
-          # 将整个 JSON 数据转换为单行并存储到输出
-          # 使用 jq 压缩 JSON 并转义，避免多行问题
-          COMPRESSED_DATA=$(echo "$RELEASE_DATA" | jq -c .)
-          echo "data=$COMPRESSED_DATA" >> $GITHUB_OUTPUT
-          
-          # 可选：输出一些调试信息
-          echo "Successfully fetched Mihomo release data"
+          curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest > mihomo-release.json
+          echo "Mihomo release data saved to file"
 
-      # 获取 Zashboard 最新版本信息
-      - name: Get Zashboard latest release info
+      # 获取 Zashboard 下载 URL
+      - name: Get Zashboard download URL
         id: zashboard
         run: |
           echo "Fetching Zashboard latest release info..."
           RELEASE_DATA=$(curl -s https://api.github.com/repos/Zephyruso/zashboard/releases/latest)
-          
-          # 获取第一个资产的下载链接
           DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[0].browser_download_url')
           
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
@@ -78,5 +67,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
-            MIHOMO_RELEASE_DATA=${{ steps.mihomo.outputs.data }}
             ZASHBOARD_DOWNLOAD_URL=${{ steps.zashboard.outputs.url }}
+          # 通过文件传递 Mihomo 数据
+          secrets: |
+            "MIHOMO_RELEASE_DATA=./mihomo-release.json"
