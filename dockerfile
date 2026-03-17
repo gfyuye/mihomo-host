@@ -11,26 +11,17 @@ ARG ZASHBOARD_DOWNLOAD_URL
 # 创建工作目录
 WORKDIR /app
 
-# 第一步：单独读取并验证 secret
+# 单个 RUN 命令完成所有 Mihomo 相关操作
 RUN --mount=type=secret,id=MIHOMO_RELEASE_DATA \
-    echo "=== Step 1: Reading secret file ===" && \
+    set -e && \
+    echo "=== Processing platform ${TARGETPLATFORM} ===" && \
+    \
+    # 检查并读取 secret
     if [ ! -f /run/secrets/MIHOMO_RELEASE_DATA ]; then \
         echo "ERROR: Secret file not found!" && exit 1; \
     fi && \
-    echo "Secret file exists, size: $(wc -c < /run/secrets/MIHOMO_RELEASE_DATA) bytes" && \
-    # 保存到临时文件供后续使用
-    cp /run/secrets/MIHOMO_RELEASE_DATA /tmp/mihomo-data.json && \
-    echo "Secret file copied to /tmp/mihomo-data.json"
-
-# 第二步：解析架构并下载
-RUN echo "=== Step 2: Processing platform ${TARGETPLATFORM} ===" && \
-    # 检查文件是否存在
-    if [ ! -f /tmp/mihomo-data.json ]; then \
-        echo "ERROR: Mihomo data file not found!" && exit 1; \
-    fi && \
-    # 读取数据
-    MIHOMO_RELEASE_DATA=$(cat /tmp/mihomo-data.json) && \
-    echo "Data loaded, length: ${#MIHOMO_RELEASE_DATA}" && \
+    echo "Secret file found, size: $(wc -c < /run/secrets/MIHOMO_RELEASE_DATA) bytes" && \
+    MIHOMO_RELEASE_DATA=$(cat /run/secrets/MIHOMO_RELEASE_DATA) && \
     \
     # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
@@ -45,17 +36,18 @@ RUN echo "=== Step 2: Processing platform ${TARGETPLATFORM} ===" && \
     \
     echo "Using filter: ${FILTER}" && \
     \
-    # 使用 jq 从 JSON 中提取 URL
+    # 提取下载 URL
     MIHOMO_URL=$(echo "${MIHOMO_RELEASE_DATA}" | jq -r "${FILTER}" | head -n1) && \
     echo "Found URL: ${MIHOMO_URL}" && \
     \
     if [ -z "${MIHOMO_URL}" ] || [ "${MIHOMO_URL}" = "null" ]; then \
         echo "Error: Could not find appropriate Mihomo binary for ${TARGETPLATFORM}" && \
         echo "Available assets:" && \
-        echo "${MIHOMO_RELEASE_DATA}" | jq '.assets[].name' && \
+        echo "${MIHOMO_RELEASE_DATA}" | jq -r '.assets[].name' && \
         exit 1; \
     fi && \
     \
+    # 下载文件
     echo "Downloading Mihomo from: ${MIHOMO_URL}" && \
     curl -L -o mihomo.gz "${MIHOMO_URL}" && \
     \
@@ -65,7 +57,7 @@ RUN echo "=== Step 2: Processing platform ${TARGETPLATFORM} ===" && \
     fi && \
     echo "Download complete, file size: $(wc -c < mihomo.gz) bytes" && \
     \
-    # 解压 gz 文件
+    # 解压并安装
     gzip -d mihomo.gz && \
     if [ ! -f mihomo ]; then \
         echo "ERROR: Decompression failed" && exit 1; \
@@ -75,7 +67,8 @@ RUN echo "=== Step 2: Processing platform ${TARGETPLATFORM} ===" && \
     echo "Mihomo installed successfully at /usr/local/bin/mihomo"
 
 # 下载并安装 zashboard
-RUN echo "=== Step 3: Installing Zashboard ===" && \
+RUN set -e && \
+    echo "=== Installing Zashboard ===" && \
     if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
         echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
