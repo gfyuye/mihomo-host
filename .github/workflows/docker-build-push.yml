@@ -33,16 +33,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-      # 获取 Zashboard 下载 URL（Mihomo 现在在 Dockerfile 中直接获取）
+# 获取 Zashboard 下载 URL（精确匹配 dist.zip）
       - name: Get Zashboard download URL
         id: zashboard
         run: |
           echo "Fetching Zashboard latest release info..."
+          # 获取最新 release 的 JSON 数据
           RELEASE_DATA=$(curl -s https://api.github.com/repos/Zephyruso/zashboard/releases/latest)
-          DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[0].browser_download_url')
           
+          # 精确查找文件名以 dist.zip 结尾的资产，并获取其下载链接
+          DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("dist.zip")) | .browser_download_url' | head -n 1)
+          
+          # 检查是否找到
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-            echo "Error: Could not find any asset for Zashboard"
+            echo "Error: Could not find dist.zip asset for Zashboard"
+            echo "Available assets:"
+            echo "$RELEASE_DATA" | jq -r '.assets[].name'
             exit 1
           fi
           
