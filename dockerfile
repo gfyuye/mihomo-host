@@ -11,17 +11,18 @@ ARG ZASHBOARD_DOWNLOAD_URL
 # 创建工作目录
 WORKDIR /app
 
-# 单个 RUN 命令完成所有 Mihomo 相关操作
-RUN --mount=type=secret,id=MIHOMO_RELEASE_DATA \
-    set -e && \
+# 直接在构建时获取 Mihomo 最新版本信息并下载
+RUN set -e && \
     echo "=== Processing platform ${TARGETPLATFORM} ===" && \
     \
-    # 检查并读取 secret
-    if [ ! -f /run/secrets/MIHOMO_RELEASE_DATA ]; then \
-        echo "ERROR: Secret file not found!" && exit 1; \
+    # 获取最新 release 信息
+    echo "Fetching latest Mihomo release info..." && \
+    MIHOMO_RELEASE_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest) && \
+    \
+    # 验证是否成功获取
+    if [ -z "$MIHOMO_RELEASE_DATA" ] || [ "$(echo "$MIHOMO_RELEASE_DATA" | jq -r '.message')" = "Not Found" ]; then \
+        echo "ERROR: Failed to fetch Mihomo release data" && exit 1; \
     fi && \
-    echo "Secret file found, size: $(wc -c < /run/secrets/MIHOMO_RELEASE_DATA) bytes" && \
-    MIHOMO_RELEASE_DATA=$(cat /run/secrets/MIHOMO_RELEASE_DATA) && \
     \
     # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
