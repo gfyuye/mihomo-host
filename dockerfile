@@ -2,7 +2,7 @@
 FROM alpine:latest
 
 # 安装必要的工具
-RUN apk add --no-cache curl tar gzip bash jq busybox-extras
+RUN apk add --no-cache curl tar gzip bash jq
 
 # 设置构建参数
 ARG TARGETPLATFORM
@@ -132,7 +132,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo '' >> /start.sh && \
     echo '# 启动静态文件服务器（zashboard）' >> /start.sh && \
     echo 'echo "Starting zashboard web server on port 8080..."' >> /start.sh && \
-    echo 'cd /app/zashboard && busybox httpd -f -p 8080 -h /app/zashboard &' >> /start.sh && \
+    echo 'cd /app/zashboard && httpd -f -p 8080 -h /app/zashboard &' >> /start.sh && \
     echo 'HTTPD_PID=$!' >> /start.sh && \
     echo 'echo "Zashboard server started with PID: $HTTPD_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
