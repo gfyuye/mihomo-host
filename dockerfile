@@ -6,15 +6,18 @@ RUN apk add --no-cache curl tar gzip bash jq
 
 # 设置构建参数
 ARG TARGETPLATFORM
-ARG MIHOMO_RELEASE_DATA
 ARG ZASHBOARD_DOWNLOAD_URL
 
 # 创建工作目录
 WORKDIR /app
 
-# 根据架构选择正确的 Mihomo 下载 URL
-RUN echo "Target platform: ${TARGETPLATFORM}" && \
+# 挂载 secret 文件（在构建时通过 --secret 注入）
+RUN --mount=type=secret,id=MIHOMO_RELEASE_DATA \
+    echo "Target platform: ${TARGETPLATFORM}" && \
     echo "Processing Mihomo release data..." && \
+    \
+    # 从 secret 文件读取数据
+    MIHOMO_RELEASE_DATA=$(cat /run/secrets/MIHOMO_RELEASE_DATA) && \
     \
     # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
@@ -70,10 +73,9 @@ RUN if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "n
 # 创建必要的目录
 RUN mkdir -p /etc/mihomo /var/log
 
-# 创建默认配置文件（如果不存在）
+# 创建默认配置文件
 RUN if [ ! -f /etc/mihomo/config.yaml ]; then \
         cat > /etc/mihomo/config.yaml << 'EOF' && \
-# 默认配置文件
 port: 7890
 socks-port: 7891
 allow-lan: true
@@ -110,5 +112,4 @@ RUN echo '#!/bin/sh' > /start.sh && \
 # 暴露端口
 EXPOSE 7890 7891 9090
 
-# 使用启动脚本
 CMD ["/start.sh"]
