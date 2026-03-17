@@ -75,27 +75,21 @@ RUN set -e && \
     if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
         echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
-        curl -L -o zashboard.archive "${ZASHBOARD_DOWNLOAD_URL}" && \
+        curl -L -o zashboard.zip "${ZASHBOARD_DOWNLOAD_URL}" && \
         \
-        if [ ! -f zashboard.archive ] || [ ! -s zashboard.archive ]; then \
+        if [ ! -f zashboard.zip ] || [ ! -s zashboard.zip ]; then \
             echo "ERROR: Zashboard download failed" && exit 1; \
         fi && \
         \
-        echo "Download complete, file type: $(file zashboard.archive)" && \
+        echo "Download complete, file size: $(wc -c < zashboard.zip) bytes" && \
+        echo "Installing unzip..." && \
+        apk add --no-cache unzip && \
         \
-        # 检查文件类型并解压
-        if file zashboard.archive | grep -q "gzip compressed"; then \
-            echo "Extracting gzip archive..." && \
-            tar -xzf zashboard.archive -C /app/zashboard/; \
-        elif file zashboard.archive | grep -q "Zip archive"; then \
-            echo "Extracting zip archive..." && \
-            apk add --no-cache unzip && \
-            unzip -q zashboard.archive -d /app/zashboard/; \
-        else \
-            echo "Unknown archive format, copying as is" && \
-            cp zashboard.archive /app/zashboard/; \
-        fi && \
-        rm zashboard.archive; \
+        # 直接解压（因为是 dist.zip）
+        echo "Extracting zip archive..." && \
+        unzip -q zashboard.zip -d /app/zashboard/ && \
+        \
+        rm zashboard.zip; \
         echo "Zashboard installed to /app/zashboard"; \
     else \
         echo "Zashboard download URL not provided, skipping..."; \
