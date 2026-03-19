@@ -43,7 +43,7 @@ jobs:
           
           # 精确查找文件名以 dist.zip 结尾的资产，并获取其下载链接
           DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("compressed-dist.tgz")) | .browser_download_url' | head -n 1)
-          
+          echo "$DOWNLOAD_URL"
           # 检查是否找到
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
             echo "Error: Could not find compressed-dist.tgz asset for Metacubexd"
