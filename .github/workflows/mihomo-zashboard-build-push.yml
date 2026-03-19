@@ -33,25 +33,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-- name: Get Zashboard download URL
-  id: zashboard
-  run: |
-    echo "Fetching Zashboard latest release info..."
-    RELEASE_DATA=$(curl -s --retry 3 --retry-delay 5 \
-      -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      https://api.github.com/repos/Zephyruso/zashboard/releases/latest)
-    
-    DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("dist.zip")) | .browser_download_url' | head -n 1)
-    
-    if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-      echo "Error: Could not find dist.zip asset for Zashboard"
-      echo "Available assets:"
-      echo "$RELEASE_DATA" | jq -r '.assets[].name'
-      exit 1
-    fi
-    
-    echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-    echo "Zashboard download URL: $DOWNLOAD_URL"
+      - name: Get Zashboard download URL
+        id: zashboard
+        run: |
+          echo "Fetching Zashboard latest release info..."
+          RELEASE_DATA=$(curl -s --retry 3 --retry-delay 5 \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/Zephyruso/zashboard/releases/latest)
+            DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("dist.zip")) | .browser_download_url' | head -n 1)
+            if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
+            echo "Error: Could not find dist.zip asset for Zashboard"
+            echo "Available assets:"
+            echo "$RELEASE_DATA" | jq -r '.assets[].name'
+            exit 1
+          fi
+          echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+          echo "Zashboard download URL: $DOWNLOAD_URL"
 
       # 构建并推送多架构镜像
       - name: Build and push Docker image
