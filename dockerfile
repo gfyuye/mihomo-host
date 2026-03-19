@@ -27,9 +27,9 @@ RUN set -e && \
     # 根据架构选择正确的二进制文件
     if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then \
         echo "Selecting amd64 v3 binary (standard version without go suffix)..." && \
-        # 匹配标准的 v3 版本，格式如：mihomo-linux-amd64-v3-v1.19.21.gz
-        # 使用正则：以 linux-amd64-v3-v 开头，后跟版本号，不包含 -go
-        FILTER='.assets[] | select(.name | test("linux-amd64-v3-v[0-9]+\\.[0-9]+\\.[0-9]+\\.gz$")) | .browser_download_url'; \
+        # 匹配标准的 v3 版本，格式如：mihomo-linux-amd64-v2-v1.19.21.gz
+        # 使用正则：以 linux-amd64-v2-v 开头，后跟版本号，不包含 -go
+        FILTER='.assets[] | select(.name | test("linux-amd64-v2-v[0-9]+\\.[0-9]+\\.[0-9]+\\.gz$")) | .browser_download_url'; \
     elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then \
         echo "Selecting arm64 binary (standard version without go suffix)..." && \
         FILTER='.assets[] | select(.name | test("linux-arm64-v[0-9]+\\.[0-9]+\\.[0-9]+\\.gz$")) | .browser_download_url'; \
