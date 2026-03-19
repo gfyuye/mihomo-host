@@ -1,4 +1,4 @@
-name: Build and Push Multi-arch Docker Images to GHCR
+name: Build and Push Mihomo-Zashboard Images to GHCR
 
 on:
   push:
