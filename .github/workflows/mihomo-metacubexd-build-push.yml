@@ -33,26 +33,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-# 获取 Metacubexd 下载 URL（精确匹配 dist.zip）
-      - name: Get Metacubexd download URL
-        id: metacubexd
-        run: |
-          echo "Fetching Metacubexd latest release info..."
-          # 获取最新 release 的 JSON 数据
-          RELEASE_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest)
-          
-          # 精确查找文件名以 dist.zip 结尾的资产，并获取其下载链接
-          DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("compressed-dist.tgz")) | .browser_download_url' | head -n 1)
-          # 检查是否找到
-          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-            echo "Error: Could not find compressed-dist.tgz asset for Metacubexd"
-            echo "Available assets:"
-            echo "$RELEASE_DATA" | jq -r '.assets[].name'
-            exit 1
-          fi
-          
-          echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-          echo "Metacubexd download URL: $DOWNLOAD_URL"
+- name: Get Metacubexd download URL
+  id: metacubexd
+  run: |
+    echo "Fetching Metacubexd latest release info..."
+    # 使用 GITHUB_TOKEN 认证，并添加重试
+    RELEASE_DATA=$(curl -s --retry 3 --retry-delay 5 \
+      -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+      https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest)
+    
+    DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("compressed-dist.tgz")) | .browser_download_url' | head -n 1)
+    
+    if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
+      echo "Error: Could not find compressed-dist.tgz asset for Metacubexd"
+      echo "Available assets:"
+      echo "$RELEASE_DATA" | jq -r '.assets[].name'
+      exit 1
+    fi
+    
+    echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+    echo "Metacubexd download URL: $DOWNLOAD_URL"
 
       # 构建并推送多架构镜像
       - name: Build and push Docker image
