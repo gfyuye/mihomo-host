@@ -33,11 +33,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
 
-# 获取 Zashboard 下载 URL（精确匹配 dist.zip）
-      - name: Get Zashboard download URL
-        id: zashboard
+# 获取 Metacubexd 下载 URL（精确匹配 dist.zip）
+      - name: Get Metacubexd download URL
+        id: metacubexd
         run: |
-          echo "Fetching Zashboard latest release info..."
+          echo "Fetching Metacubexd latest release info..."
           # 获取最新 release 的 JSON 数据
           RELEASE_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest)
           
@@ -46,14 +46,14 @@ jobs:
           
           # 检查是否找到
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-            echo "Error: Could not find dist.zip asset for Zashboard"
+            echo "Error: Could not find compressed-dist.tgz asset for Metacubexd"
             echo "Available assets:"
             echo "$RELEASE_DATA" | jq -r '.assets[].name'
             exit 1
           fi
           
           echo "url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-          echo "Zashboard download URL: $DOWNLOAD_URL"
+          echo "Metacubexd download URL: $DOWNLOAD_URL"
 
       # 构建并推送多架构镜像
       - name: Build and push Docker image
@@ -66,4 +66,4 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
-            ZASHBOARD_DOWNLOAD_URL=${{ steps.zashboard.outputs.url }}
+            DASHBORD_DOWNLOAD_URL=${{ steps.metacubexd.outputs.url }}
