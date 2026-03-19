@@ -69,42 +69,45 @@ RUN set -e && \
     mv mihomo /usr/local/bin/mihomo && \
     echo "Mihomo installed successfully at /usr/local/bin/mihomo"
 
-# 下载 dashboard
-RUN set -eux && \
+
+# 下载并安装 dashboard
+RUN set -e && \
+    echo "=== Installing dashboard ===" && \
     if [ -n "${DASHBOARD_DOWNLOAD_URL}" ] && [ "${DASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
-        echo "=== Downloading dashboard ===" && \
+        echo "Downloading Dashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/dashboard && \
         cd /tmp && \
-        curl -fSL -o dashboard-file "${DASHBOARD_DOWNLOAD_URL}" && \
-        echo "Download complete"; \
-    fi
-
-# 解压并安装 dashboard
-RUN set -eux && \
-    if [ -f /tmp/dashboard-file ]; then \
-        echo "=== Installing dashboard ===" && \
-        cd /tmp && \
-        apk add --no-cache file && \
-        FILE_TYPE=$(file -b dashboard-file) && \
-        echo "File type: $FILE_TYPE" && \
-        if echo "$FILE_TYPE" | grep -q "gzip"; then \
-            tar -xzf dashboard-file -C /app/dashboard/; \
-        elif echo "$FILE_TYPE" | grep -q "Zip"; then \
-            apk add --no-cache unzip && \
-            unzip -q dashboard-file -d /app/dashboard/; \
-        else \
-            cp dashboard-file /app/dashboard/; \
+        curl -L -O "${DASHBOARD_DOWNLOAD_URL}" && \
+        \
+        FILENAME=$(basename "${DASHBOARD_DOWNLOAD_URL}") && \
+        if [ ! -f "$FILENAME" ] || [ ! -s "$FILENAME" ]; then \
+            echo "ERROR: Dashboard download failed" && exit 1; \
         fi && \
+        echo "Download complete, file size: $(wc -c < "$FILENAME") bytes" && \
+        \
+        if [[ "$FILENAME" == *.tgz ]] || [[ "$FILENAME" == *.tar.gz ]]; then \
+            echo "Extracting tar archive..." && \
+            tar -xzvf "$FILENAME" -C /app/dashboard/; \
+        elif [[ "$FILENAME" == *.zip ]]; then \
+            echo "Extracting zip archive..." && \
+            apk add --no-cache unzip && \
+            unzip "$FILENAME" -d /app/dashboard/; \
+        else \
+            echo "Unknown file type: $FILENAME" && exit 1; \
+        fi && \
+        \
+        # 如果解压后有 dist 目录，将其内容移出
         if [ -d "/app/dashboard/dist" ]; then \
-            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true; \
+            echo "Moving dist contents to /app/dashboard..." && \
+            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true && \
             rmdir /app/dashboard/dist 2>/dev/null || true; \
         fi && \
-        rm -f dashboard-file && \
-        echo "Dashboard installed"; \
+        \
+        rm -f "$FILENAME" && \
+        echo "Dashboard installed to /app/dashboard"; \
     else \
-        echo "No dashboard file to install"; \
+        echo "Dashboard download URL not provided, skipping..."; \
     fi
-
 # 创建必要的目录
 RUN mkdir -p /etc/mihomo /var/log
 
