@@ -7,7 +7,7 @@ RUN apk add --no-cache curl tar gzip bash jq busybox-extras
 # 设置构建参数
 ARG TARGETPLATFORM
 ARG DASHBOARD_DOWNLOAD_URL
-
+ARG FILENAME
 # 创建工作目录
 WORKDIR /app
 
@@ -73,30 +73,36 @@ RUN set -e && \
 RUN set -e && \
     echo "=== Installing dashboard ===" && \
     if [ -n "${DASHBOARD_DOWNLOAD_URL}" ] && [ "${DASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
-        echo "Downloading Zashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
-        mkdir -p /app/zashboard && \
-        curl -L -o zashboard.zip "${DASHBOARD_DOWNLOAD_URL}" && \
+        echo "Downloading Dashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
+        mkdir -p /app/dashboard && \
+        curl -L -o  "${DASHBOARD_DOWNLOAD_URL}" && \
         \
-        if [ ! -f zashboard.zip ] || [ ! -s zashboard.zip ]; then \
-            echo "ERROR: Zashboard download failed" && exit 1; \
+        FILENAME=$(basename "${DASHBOARD_DOWNLOAD_URL}")  \
+        if [ ! -f $FILENAME ] || [ ! -s $FILENAME ]; then \
+            echo "ERROR: Dashboard download failed" && exit 1; \
         fi && \
-        \
-        echo "Download complete, file size: $(wc -c < zashboard.zip) bytes" && \
-        apk add --no-cache unzip && \
-        echo "Extracting zip archive..." && \
-        unzip -q zashboard.zip -d /app/zashboard/ && \
-        \
+        echo "Download complete, file size: $(wc -c < $FILENAME) bytes" && \
+        if [[ $FILENAME == *.tgz || $FILENAME == *.tar.gz ]]; then \
+            tar -xzvf "$FILENAME" -d /app/dashboard/ &&\
+            echo "Extracting zip archive..." && \  
+        elif [[ $FILENAME == *.zip ]]; then \
+            apk add --no-cache unzip && \
+            unzip "$FILENAME" -d /app/dashboard/ && \
+            echo "Extracting zip archive..." && \            
+        else \
+            echo "未知文件类型" \
+        fi \
         # 如果解压后有 dist 目录，将其内容移出
-        if [ -d "/app/zashboard/dist" ]; then \
-            echo "Moving dist contents to /app/zashboard..." && \
-            mv /app/zashboard/dist/* /app/zashboard/ 2>/dev/null || true && \
-            rmdir /app/zashboard/dist 2>/dev/null || true; \
+        if [ -d "/app/dashboard/dist" ]; then \
+            echo "Moving dist contents to /app/dashboard..." && \
+            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true && \
+            rmdir /app/dashboard/dist 2>/dev/null || true; \
         fi && \
         \
-        rm zashboard.zip; \
-        echo "Zashboard installed to /app/zashboard"; \
+        rm $FILENAME; \
+        echo "dashboard installed to /app/dashboard"; \
     else \
-        echo "Zashboard download URL not provided, skipping..."; \
+        echo "dashboard download URL not provided, skipping..."; \
     fi
 
 # 创建必要的目录
