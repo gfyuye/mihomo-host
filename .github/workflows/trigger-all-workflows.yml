@@ -1,0 +1,69 @@
+name: Trigger All Other Workflows
+
+on:
+  schedule:
+    # 每天凌晨 2 点运行（示例），可自行修改 cron 表达式
+    - cron: '0 0 * * 2'
+  workflow_dispatch:   # 也支持手动触发
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # 使用自动生成的令牌，已具备触发工作流的权限（需在 settings 中确认）
+
+jobs:
+  trigger-others:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write   # 需要此权限才能触发其他工作流
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get current workflow filename
+        id: self
+        run: |
+          # 当前工作流文件名（不含路径）
+          SELF_FILE="${{ github.workflow_ref }}"
+          # github.workflow_ref 格式类似：refs/heads/main/.github/workflows/trigger-all-workflows.yml@refs/heads/main
+          # 提取文件名部分
+          FILENAME=$(basename "${SELF_FILE%%@*}")
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+
+      - name: Trigger other workflows
+        run: |
+          # 设置 GitHub API 基础 URL
+          REPO="${{ github.repository }}"
+          API_URL="https://api.github.com/repos/$REPO/actions/workflows"
+
+          # 遍历 .github/workflows 下的所有 .yml 文件
+          for file in .github/workflows/*.yml; do
+            filename=$(basename "$file")
+            # 跳过当前工作流文件
+            if [ "$filename" = "${{ steps.self.outputs.filename }}" ]; then
+              echo "Skipping self: $filename"
+              continue
+            fi
+
+            echo "Triggering workflow: $filename"
+
+            # 获取该工作流的 ID（需要先从 API 获取工作流列表）
+            # 更简单的方法是直接使用文件名触发（API 也支持使用文件名，但需要 URL 编码）
+            # 但建议先获取 workflow_id（数字），更稳定
+            WORKFLOW_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "$API_URL" | jq -r --arg name "$filename" '.workflows[] | select(.path | endswith($name)) | .id')
+
+            if [ -z "$WORKFLOW_ID" ] || [ "$WORKFLOW_ID" = "null" ]; then
+              echo "Warning: Could not find workflow ID for $filename, skipping"
+              continue
+            fi
+
+            # 触发 workflow_dispatch
+            curl -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "$API_URL/$WORKFLOW_ID/dispatches" \
+              -d '{"ref":"main"}'   # 指定触发分支，可根据需要修改
+
+            echo "Triggered $filename (ID: $WORKFLOW_ID)"
+          done
