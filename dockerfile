@@ -76,36 +76,36 @@ RUN set -eux && \
         mkdir -p /app/dashboard && \
         cd /tmp && \
         echo "Downloading Dashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
-        curl -fL -O "${DASHBOARD_DOWNLOAD_URL}" && \
+        curl -fSL -o dashboard-file "${DASHBOARD_DOWNLOAD_URL}" && \
         \
-        FILENAME=$(basename "${DASHBOARD_DOWNLOAD_URL}") && \
-        if [ ! -s "$FILENAME" ]; then \
+        if [ ! -s "dashboard-file" ]; then \
             echo "ERROR: Dashboard download failed or file is empty" >&2 && exit 1; \
         fi && \
-        echo "Download complete, file size: $(wc -c < "$FILENAME") bytes" && \
+        echo "Download complete, file size: $(wc -c < dashboard-file) bytes" && \
         \
-        case "$FILENAME" in \
-            *.tgz|*.tar.gz) \
-                echo "Extracting tar archive..." && \
-                tar -xzf "$FILENAME" -C /app/dashboard/ ;; \
-            *.zip) \
-                echo "Extracting zip archive..." && \
-                apk add --no-cache unzip && \
-                unzip -q "$FILENAME" -d /app/dashboard/ ;; \
-            *) \
-                echo "ERROR: Unknown file type: $FILENAME" >&2 && exit 1 ;; \
-        esac && \
+        # 检测文件类型
+        FILE_TYPE=$(file -b dashboard-file) && \
+        echo "File type: $FILE_TYPE" && \
         \
-        # 处理 dist 目录
+        if echo "$FILE_TYPE" | grep -q "gzip\|tar"; then \
+            echo "Extracting tar archive..." && \
+            tar -xzf dashboard-file -C /app/dashboard/; \
+        elif echo "$FILE_TYPE" | grep -q "Zip"; then \
+            echo "Extracting zip archive..." && \
+            apk add --no-cache unzip && \
+            unzip -q dashboard-file -d /app/dashboard/; \
+        else \
+            echo "ERROR: Unknown file type: $FILE_TYPE" >&2 && exit 1; \
+        fi && \
+        \
+        # 如果解压后有 dist 目录，将其内容移出
         if [ -d "/app/dashboard/dist" ]; then \
             echo "Moving dist contents to /app/dashboard..." && \
-            shopt -s dotglob && \
-            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null && \
-            shopt -u dotglob && \
+            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true && \
             rmdir /app/dashboard/dist 2>/dev/null || true; \
         fi && \
         \
-        rm -f "$FILENAME" && \
+        rm -f dashboard-file && \
         echo "Dashboard installed to /app/dashboard"; \
     else \
         echo "Dashboard download URL not provided, skipping..."; \
