@@ -66,4 +66,4 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           build-args: |
-            DASHBORD_DOWNLOAD_URL=${{ steps.metacubexd.outputs.url }}
+            DASHBOARD_DOWNLOAD_URL=${{ steps.metacubexd.outputs.url }}
