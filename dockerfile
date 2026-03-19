@@ -6,7 +6,7 @@ RUN apk add --no-cache curl tar gzip bash jq busybox-extras
 
 # 设置构建参数
 ARG TARGETPLATFORM
-ARG ZASHBOARD_DOWNLOAD_URL
+ARG DASHBOARD_DOWNLOAD_URL
 
 # 创建工作目录
 WORKDIR /app
@@ -72,10 +72,10 @@ RUN set -e && \
 # 下载并安装 dashboard
 RUN set -e && \
     echo "=== Installing dashboard ===" && \
-    if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
-        echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
+    if [ -n "${DASHBOARD_DOWNLOAD_URL}" ] && [ "${DASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
+        echo "Downloading Zashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
-        curl -L -o zashboard.zip "${ZASHBOARD_DOWNLOAD_URL}" && \
+        curl -L -o zashboard.zip "${DASHBOARD_DOWNLOAD_URL}" && \
         \
         if [ ! -f zashboard.zip ] || [ ! -s zashboard.zip ]; then \
             echo "ERROR: Zashboard download failed" && exit 1; \
