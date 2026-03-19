@@ -69,46 +69,40 @@ RUN set -e && \
     mv mihomo /usr/local/bin/mihomo && \
     echo "Mihomo installed successfully at /usr/local/bin/mihomo"
 
-# 下载并安装 dashboard
+# 下载 dashboard
 RUN set -eux && \
-    echo "=== Installing dashboard ===" && \
     if [ -n "${DASHBOARD_DOWNLOAD_URL}" ] && [ "${DASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
+        echo "=== Downloading dashboard ===" && \
         mkdir -p /app/dashboard && \
         cd /tmp && \
-        echo "Downloading Dashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
         curl -fSL -o dashboard-file "${DASHBOARD_DOWNLOAD_URL}" && \
-        \
-        if [ ! -s "dashboard-file" ]; then \
-            echo "ERROR: Dashboard download failed or file is empty" >&2 && exit 1; \
-        fi && \
-        echo "Download complete, file size: $(wc -c < dashboard-file) bytes" && \
-        \
-        # 检测文件类型
+        echo "Download complete"; \
+    fi
+
+# 解压并安装 dashboard
+RUN set -eux && \
+    if [ -f /tmp/dashboard-file ]; then \
+        echo "=== Installing dashboard ===" && \
+        cd /tmp && \
+        apk add --no-cache file && \
         FILE_TYPE=$(file -b dashboard-file) && \
         echo "File type: $FILE_TYPE" && \
-        \
-        if echo "$FILE_TYPE" | grep -q "gzip\|tar"; then \
-            echo "Extracting tar archive..." && \
+        if echo "$FILE_TYPE" | grep -q "gzip"; then \
             tar -xzf dashboard-file -C /app/dashboard/; \
         elif echo "$FILE_TYPE" | grep -q "Zip"; then \
-            echo "Extracting zip archive..." && \
             apk add --no-cache unzip && \
             unzip -q dashboard-file -d /app/dashboard/; \
         else \
-            echo "ERROR: Unknown file type: $FILE_TYPE" >&2 && exit 1; \
+            cp dashboard-file /app/dashboard/; \
         fi && \
-        \
-        # 如果解压后有 dist 目录，将其内容移出
         if [ -d "/app/dashboard/dist" ]; then \
-            echo "Moving dist contents to /app/dashboard..." && \
-            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true && \
+            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true; \
             rmdir /app/dashboard/dist 2>/dev/null || true; \
         fi && \
-        \
         rm -f dashboard-file && \
-        echo "Dashboard installed to /app/dashboard"; \
+        echo "Dashboard installed"; \
     else \
-        echo "Dashboard download URL not provided, skipping..."; \
+        echo "No dashboard file to install"; \
     fi
 
 # 创建必要的目录
