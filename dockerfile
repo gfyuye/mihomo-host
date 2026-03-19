@@ -69,9 +69,9 @@ RUN set -e && \
     mv mihomo /usr/local/bin/mihomo && \
     echo "Mihomo installed successfully at /usr/local/bin/mihomo"
 
-# 下载并安装 zashboard
+# 下载并安装 dashboard
 RUN set -e && \
-    echo "=== Installing Zashboard ===" && \
+    echo "=== Installing dashboard ===" && \
     if [ -n "${ZASHBOARD_DOWNLOAD_URL}" ] && [ "${ZASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
         echo "Downloading Zashboard from: ${ZASHBOARD_DOWNLOAD_URL}" && \
         mkdir -p /app/zashboard && \
