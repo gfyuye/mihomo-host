@@ -39,10 +39,10 @@ jobs:
         run: |
           echo "Fetching Zashboard latest release info..."
           # 获取最新 release 的 JSON 数据
-          RELEASE_DATA=$(curl -s https://api.github.com/repos/Zephyruso/zashboard/releases/latest)
+          RELEASE_DATA=$(curl -s https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest)
           
           # 精确查找文件名以 dist.zip 结尾的资产，并获取其下载链接
-          DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("dist.zip")) | .browser_download_url' | head -n 1)
+          DOWNLOAD_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith("compressed-dist.tgz")) | .browser_download_url' | head -n 1)
           
           # 检查是否找到
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
