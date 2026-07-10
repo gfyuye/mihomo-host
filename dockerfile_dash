@@ -139,9 +139,9 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo 'MIHOMO_PID=$!' >> /start.sh && \
     echo 'echo "Mihomo started with PID: $MIHOMO_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
-    echo '# 启动静态文件服务器（zashboard）' >> /start.sh && \
+    echo '# 启动静态文件服务器（dashboard）' >> /start.sh && \
     echo 'echo "Starting zashboard web server on port 8080..."' >> /start.sh && \
-    echo 'cd /app/zashboard && httpd -f -p 8080 -h /app/zashboard &' >> /start.sh && \
+    echo 'cd /app/dashboard && httpd -f -p 8080 -h /app/dashboard &' >> /start.sh && \
     echo 'HTTPD_PID=$!' >> /start.sh && \
     echo 'echo "Zashboard server started with PID: $HTTPD_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
