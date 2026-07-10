@@ -1,8 +1,6 @@
 name: Build and Push Mihomo-Zashboard Images to GHCR
 
 on:
-  push:
-    branches: [ "main", "master" ]
   workflow_dispatch:
 
 env:
@@ -55,6 +53,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./Dockerfile_zash
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
