@@ -150,7 +150,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     chmod +x /start.sh
 
 # 暴露端口
-EXPOSE 7890 7891 9090
+EXPOSE 7890 7891 8080
 
 # 使用启动脚本
 CMD ["/start.sh"]
