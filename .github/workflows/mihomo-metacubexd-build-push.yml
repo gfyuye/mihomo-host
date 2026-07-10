@@ -1,8 +1,6 @@
 name: Build and Push Mihomo-Metacubexd Images to GHCR
 
 on:
-  push:
-    branches: [ "main", "master" ]
   workflow_dispatch:
 
 env:
