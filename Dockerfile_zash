@@ -75,38 +75,38 @@ RUN set -e && \
     echo "=== Installing dashboard ===" && \
     if [ -n "${DASHBOARD_DOWNLOAD_URL}" ] && [ "${DASHBOARD_DOWNLOAD_URL}" != "null" ]; then \
         echo "Downloading Dashboard from: ${DASHBOARD_DOWNLOAD_URL}" && \
-        mkdir -p /app/dashboard && \
+        mkdir -p /app/zashboard && \
         cd /tmp && \
         curl -L -O "${DASHBOARD_DOWNLOAD_URL}" && \
         \
         FILENAME=$(basename "${DASHBOARD_DOWNLOAD_URL}") && \
         if [ ! -f "$FILENAME" ] || [ ! -s "$FILENAME" ]; then \
-            echo "ERROR: Dashboard download failed" && exit 1; \
+            echo "ERROR: Zashboard download failed" && exit 1; \
         fi && \
         echo "Download complete, file size: $(wc -c < "$FILENAME") bytes" && \
         \
         if [[ "$FILENAME" == *.tgz ]] || [[ "$FILENAME" == *.tar.gz ]]; then \
             echo "Extracting tar archive..." && \
-            tar -xzvf "$FILENAME" -C /app/dashboard/; \
+            tar -xzvf "$FILENAME" -C /app/zashboard/; \
         elif [[ "$FILENAME" == *.zip ]]; then \
             echo "Extracting zip archive..." && \
             apk add --no-cache unzip && \
-            unzip "$FILENAME" -d /app/dashboard/; \
+            unzip "$FILENAME" -d /app/zashboard/; \
         else \
             echo "Unknown file type: $FILENAME" && exit 1; \
         fi && \
         \
         # 如果解压后有 dist 目录，将其内容移出
-        if [ -d "/app/dashboard/dist" ]; then \
-            echo "Moving dist contents to /app/dashboard..." && \
-            mv /app/dashboard/dist/* /app/dashboard/ 2>/dev/null || true && \
-            rmdir /app/dashboard/dist 2>/dev/null || true; \
+        if [ -d "/app/zashboard/dist" ]; then \
+            echo "Moving dist contents to /app/zashboard..." && \
+            mv /app/zashboard/dist/* /app/zashboard/ 2>/dev/null || true && \
+            rmdir /app/zashboard/dist 2>/dev/null || true; \
         fi && \
         \
         rm -f "$FILENAME" && \
-        echo "Dashboard installed to /app/dashboard"; \
+        echo "Dashboard installed to /app/zashboard"; \
     else \
-        echo "Dashboard download URL not provided, skipping..."; \
+        echo "Zashboard download URL not provided, skipping..."; \
     fi
 # 创建必要的目录
 RUN mkdir -p /etc/mihomo /var/log
@@ -140,8 +140,8 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo 'echo "Mihomo started with PID: $MIHOMO_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
     echo '# 启动静态文件服务器（zashboard）' >> /start.sh && \
-    echo 'echo "Starting zashboard web server on port 8080..."' >> /start.sh && \
-    echo 'cd /app/zashboard && httpd -f -p 8080 -h /app/zashboard &' >> /start.sh && \
+    echo 'echo "Starting zashboard web server on port 9080..."' >> /start.sh && \
+    echo 'cd /app/zashboard && httpd -f -p 9080 -h /app/zashboard &' >> /start.sh && \
     echo 'HTTPD_PID=$!' >> /start.sh && \
     echo 'echo "Zashboard server started with PID: $HTTPD_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
@@ -150,7 +150,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     chmod +x /start.sh
 
 # 暴露端口
-EXPOSE 7890 7891 8080
+EXPOSE 7890 7891 9080
 
 # 使用启动脚本
 CMD ["/start.sh"]
