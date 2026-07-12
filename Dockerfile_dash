@@ -140,8 +140,8 @@ RUN echo '#!/bin/sh' > /start.sh && \
     echo 'echo "Mihomo started with PID: $MIHOMO_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
     echo '# 启动静态文件服务器（dashboard）' >> /start.sh && \
-    echo 'echo "Starting zashboard web server on port 8080..."' >> /start.sh && \
-    echo 'cd /app/dashboard && httpd -f -p 8080 -h /app/dashboard &' >> /start.sh && \
+    echo 'echo "Starting zashboard web server on port 9080..."' >> /start.sh && \
+    echo 'cd /app/dashboard && httpd -f -p 9080 -h /app/dashboard &' >> /start.sh && \
     echo 'HTTPD_PID=$!' >> /start.sh && \
     echo 'echo "Zashboard server started with PID: $HTTPD_PID"' >> /start.sh && \
     echo '' >> /start.sh && \
@@ -150,7 +150,7 @@ RUN echo '#!/bin/sh' > /start.sh && \
     chmod +x /start.sh
 
 # 暴露端口
-EXPOSE 7890 7891 8080
+EXPOSE 7890 7891 9080
 
 # 使用启动脚本
 CMD ["/start.sh"]
